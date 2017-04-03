@@ -6,8 +6,8 @@ setup(
         name            = "anitimetable",
 	version         = "0.1",
 	description     = 'Scraping "from http://cal.syoboi.jp/" and more',
-        author          = "Shota Kitazawa"
-        author_email    = "skitazawa1121@gmail.com"
+        author          = "Shota Kitazawa",
+        author_email    = "skitazawa1121@gmail.com",
 	url             = "https://github.com/ShotaKitazawa/anitimetable",
         keywords        = "scraping anime program",
 	packages        = find_packages(),
