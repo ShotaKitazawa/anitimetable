@@ -35,9 +35,6 @@ pip install git+https://github.com/ShotaKitazawa/anitimetable
 - 完:  今季放送開始でないアニメのイメージファイルがどこにあるかがわからない > 時期でフォルダ分けするのをやめる
 	- 番組ID,番組名,番組イメージのpath のテーブルを作る。
 
-- xx分前のアニメをリストアップするメソッドの作成
-	- now_program メソッドを真似すればかんたん
-
 - 完: insertdb.py を AniTimeTable のモジュール化 > insert_db 関数つくった
 
 - 完: しょぼいカレンダー と あにぽた でアニメのタイトルが違うと困る。 > 全部しょぼいカレンダーで完結させる
@@ -52,3 +49,12 @@ pip install git+https://github.com/ShotaKitazawa/anitimetable
 
 - html 自動生成
 	- Django?
+
+- xx分前のアニメをリストアップするメソッドの作成
+	- now_program メソッドを真似すればかんたん
+
+- insert_db 関数の titlelist_id を利用者側から選択できるようにする。
+
+- 画像検索 & ダウンロード するモジュールを別の一つの関数にする。
+
+- 
