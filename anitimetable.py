@@ -5,7 +5,6 @@ import datetime
 from bs4 import BeautifulSoup
 import requests
 import tweepy
-import collect_img
 
 
 class AniTimeTable:
