@@ -28,6 +28,56 @@ mysql -uroot -p anime < anime_db.sql
 pip install git+https://github.com/ShotaKitazawa/anitimetable
 ```
 
+- 使用例
+
+```
+import anitimetable
+import datetime
+import MySQLdb
+
+
+def main():
+    broadcaster_list = [
+        "NHK Eテレ",
+        "日本テレビ",
+        "テレビ朝日",
+        "TBS",
+        "テレビ東京",
+        "フジテレビ",
+        "TOKYO MX",
+        "AT-X",
+    ]
+    C = "hogehoge"
+    CO = "hogehoge"
+    A = "hoge-hoge"
+    AC = "hoge"
+    CONNECTION = MySQLdb.connect(
+        user="hoge",
+        passwd="hoge",
+        host="localhost",
+        db="anime",
+    )
+    titlelist_id = {
+        "1",  # 放送中アニメ
+        # "2", # ラジオ
+        # "3", # ドラマ
+        # "4", # 特撮
+        # "5", # アニメ関連
+        # "7", # OVA
+        # "8", # 映画
+        # "10", # 放送終了アニメ
+    }
+    now = datetime.datetime.now()
+    Today_timetable = anitimetable.AniTimeTable(now, broadcaster_list, C, CO, A, AC, DB_CONNECTION=CONNECTION)
+    Today_timetable.show_all()
+    Today_timetable.now_program("tweet")
+    Today_timetable.insert_db(titlelist_id)
+
+
+if __name__ == "__main__":
+    main()
+```
+
 # TODO
 
 - 完: tweet に第何話かの情報を付ける > つけた

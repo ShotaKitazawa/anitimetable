@@ -28,19 +28,9 @@ class AniTimeTable:
         for program in programs:
             sys.stdout.write(program["title"] + "\n")
 
-    def insert_db(self):
+    def insert_db(self, titlelist_id):
         if self.connection == "_":
             sys.stderr.write('Error: database not initialized')
-        titlelist_id = {
-            "1",  # 放送中アニメ
-            # "2", # ラジオ
-            # "3", # ドラマ
-            # "4", # 特撮
-            # "5", # アニメ関連
-            # "7", # OVA
-            # "8", # 映画
-            # "10", # 放送終了アニメ
-        }
         for i in titlelist_id:
             soup = self._return_soup("/list?cat={0}".format(i))
             title_list = soup.find("table", {"class": "TitleList TableColor"})

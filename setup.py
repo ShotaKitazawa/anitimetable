@@ -11,5 +11,5 @@ setup(
 	url             = "https://github.com/ShotaKitazawa/anitimetable",
         keywords        = "scraping anime program",
 	packages        = find_packages(),
-        install_requires= ["beautifulsoup4", "requests", "tweepy",],
+        install_requires= ["beautifulsoup4", "requests", "tweepy", "mysqlclient", ],
 )
