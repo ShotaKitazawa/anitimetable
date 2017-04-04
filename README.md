@@ -68,10 +68,24 @@ def main():
         # "10", # 放送終了アニメ
     }
     now = datetime.datetime.now()
+
+	# 初期化
     Today_timetable = anitimetable.AniTimeTable(now, broadcaster_list, C, CO, A, AC, DB_CONNECTION=CONNECTION)
+
+	# 今日放送するアニメを全て表示する。
     Today_timetable.show_all()
-    Today_timetable.now_program("tweet")
+
+	# 現在放送中のアニメを表示する
+	## tweet 引数を取ることでツイートすることが出来る。
+    Today_timetable.now_program(tweet="tweet")
+
+	# titlelist_id に対応したデータを取ってくる
+	## DB への insert と 画像ファイルのダウンロードを行う
     Today_timetable.insert_db(titlelist_id)
+
+	# 5 分おきにツイート(常駐)
+	## 引数: [0,0] > 現在放送中のアニメ, [0,29] > 0 時間 29 分後放送のアニメ
+    Today_timetable.auto_tweet([0,0],[0,29])
 
 
 if __name__ == "__main__":
@@ -100,10 +114,10 @@ if __name__ == "__main__":
 - html 自動生成
 	- Django?
 
-- xx分前のアニメをリストアップするメソッドの作成
+- 完: xx分前のアニメをリストアップするメソッドの作成
 	- now_program メソッドを真似すればかんたん
 
-- insert_db 関数の titlelist_id を利用者側から選択できるようにする。
+- 完: insert_db 関数の titlelist_id を利用者側から選択できるようにする。
 
 - 画像検索 & ダウンロード するモジュールを別の一つの関数にする。
 

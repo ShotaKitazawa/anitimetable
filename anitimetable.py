@@ -2,6 +2,7 @@ import sys
 import os
 import re
 import datetime
+import threading
 from bs4 import BeautifulSoup
 import requests
 import tweepy
@@ -22,11 +23,14 @@ class AniTimeTable:
         self.api = tweepy.API(auth)
         self.connection = DB_CONNECTION
 
+#    def __call__(self):
+#        print("CALL")
+
     def show_all(self):
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
         programs = soup.find("td", {"class": "v3dayCell v3cellR "}).find_all("div", {"class": "pid-item v3div"})
         for program in programs:
-            sys.stdout.write(program["title"] + "\n")
+            print(program["title"])
 
     def insert_db(self, titlelist_id):
         if self.connection == "_":
@@ -37,15 +41,14 @@ class AniTimeTable:
             title_url = title_list.find_all("a")
             for j in title_url:
                 title = j.text
-                self._search_and_download_image(title)
                 print("== " + title + " ==")
                 soup = self._return_soup(j["href"])
                 try:
                     staff_list = soup.find_all("table", {"class": "section staff"})
-                    c = self.connection.cursor()
                     if self._check_table(title, "anime"):
+                        c = self.connection.cursor()
                         c.execute('insert into anime(name) values("{}")'.format(title))
-                    c.close()
+                        c.close()
                     for staffs in staff_list:
                         staff_data = staffs.find("table", {"class": "data"}).find_all("tr")
                         self._tidpage_section_insert(staff_data, title, [["原作", "writer"], ["監督", "director"], ["制作", "brand"]])
@@ -65,26 +68,57 @@ class AniTimeTable:
                         self._tidpage_section_insert(ed_data, title, [["歌", "ed", ed_title]])
                 except Exception as error:
                     print(error)
+                finally:
+                    self._search_and_download_image(title)
 
-    def now_program(self, tweet="_"):
+    def now_program(self, time_ago=[0, 0], tweet="_"):
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
         programs = soup.find("td", {"class": "v3dayCell v3cellR "}).find_all("div", {"class": "pid-item v3div"})
         for program in programs:
-            if self._time_check(program, 0, 0):
+            if self._time_check(program, time_ago):
                 broadcaster_check = self._broadcaster_check(program)
                 if broadcaster_check != "_":
-                    message = "放送中です。"
+                    atime = program["title"]
+                    if time_ago[0] == 0 and time_ago[1] == 0:
+                        broad_minute = ((self.time - self._broad_time(program, time_ago)[0])).total_seconds() // 60 - 1
+                        message = "{}分前から放送中です。".format(int(broad_minute))
+                    elif time_ago[0] == 0:
+                        broad_minute = ((self._broad_time(program, time_ago)[0]) - self.time).total_seconds() // 60
+                        message = "放送{}分前です。".format(int(broad_minute))
+                    else:
+                        broad_time = ((self._broad_time(program, time_ago)[0]) - self.time).total_seconds() // 60
+                        broad_hour = broad_time // 60
+                        broad_minute = broad_time - broad_hour * 60
+                        message = "放送{}時間{}分前です。".format(int(broad_hour), int(broad_minute))
                     ordinal = self._check_ordinal(program)
                     if tweet.lower() == "tweet":
                         self._tweet_with_picture(program, broadcaster_check, message)
                     else:
                         title = program.find("a", {"class": "v3title"}).text
-                        atime = program["title"]
                         weekday = self._check_weekday()
-                        sys.stdout.write(title + "\n" + broadcaster_check + ": " + weekday + " " + atime + "\n" + ordinal + message + "\n")
+                        print(title + "\n" + broadcaster_check + ": " + weekday + " " + atime + "\n" + ordinal + message)
                         print("===")
 
+    def auto_tweet(self, *times_ago):
+        while(True):
+            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % 5 == 0:
+                break
+        t = threading.Thread(None, self._tweet_per_minute, None, times_ago)
+        t.start()
+
+    def _tweet_per_minute(self, *times_ago):
+        self.time = datetime.datetime.now()
+        for i in times_ago:
+            self.now_program(time_ago=i, tweet="tweet")
+        # 5 分毎にツイートする
+        t = threading.Timer(300, self._tweet_per_minute, times_ago)
+        t.start()
+
     def _search_and_download_image(self, title):
+        c = self.connection.cursor()
+        c.execute('select anime_id from anime where name="{0}"'.format(title))
+        anime_id = c.fetchall()[0][0]
+        c.close()
         response = requests.get("https://search.yahoo.co.jp/image/search?p={0}&ei=UTF-8&rkf=1".format(title))
         if response.status_code == 404:
             sys.stderr.write('Error: URL page notfound.\n')
@@ -94,7 +128,7 @@ class AniTimeTable:
         content = soup.find("div", {"id": "contents"})
         image_url = content.find("img")["src"]
         image = requests.get(image_url)
-        with open("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), title), 'wb') as myfile:
+        with open("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), 'wb') as myfile:
             for chunk in image.iter_content(chunk_size=1024):
                 myfile.write(chunk)
 
@@ -155,7 +189,7 @@ class AniTimeTable:
         ordinal = program.find("span", {"class": "count"}).text.replace("#", "")
         return ordinal + "話"
 
-    def _time_check(self, program, *time_ago):  # *time_age = [時,分]
+    def _broad_time(self, program, time_ago):  # time_age = [時,分]
         regex = "^([0-9]{2}):([0-9]{2})-([0-9]{2}):([0-9]{2}).*$"
         start_hour = int(re.sub(r"{}".format(regex), r"\1", program["title"]))
         start_minute = int(re.sub(r"{}".format(regex), r"\2", program["title"]))
@@ -170,6 +204,11 @@ class AniTimeTable:
         else:
             start_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, start_hour, start_minute, 0)
             end_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, end_hour, end_minute, 0)
+        return start_time, end_time
+
+    def _time_check(self, program, time_ago):  # time_age = [時,分]
+        start_time = self._broad_time(program, time_ago)[0]
+        end_time = self._broad_time(program, time_ago)[1]
         check_time = self.time + datetime.timedelta(hours=time_ago[0]) + datetime.timedelta(minutes=time_ago[1])
         if start_time <= check_time and check_time < end_time:
             return True
@@ -195,11 +234,19 @@ class AniTimeTable:
         atime = program["title"]
         weekday = self._check_weekday()
         tweet = title + "\n" + broadcaster + ": " + weekday + " " + atime + "\n" + "\n" + message
-        anime_id_list = self._select_database('anime_id', 'anime', 'where name = "{0}"'.format(title))
-        for i in anime_id_list:
-            anime_id = i[0]
+        c = self.connection.cursor()
+        c.execute('select anime_id from anime where name="{}"'.format(title))
+        try:
+            anime_id = c.fetchall()[0][0]
             self.api.update_with_media(filename="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), status=tweet)
-            sys.stdout.write("{0} tweet.\n".format(title))
+            print("{0} tweet with picture.".format(title))
+        except:
+            sys.stderr.write("Error: '{}' is not in element of database (> anime table)\n".format(title))
+            print(tweet)
+            self.api.update_status(status=tweet)
+            print("{0} tweet.".format(title))
+        finally:
+            c.close()
 
     def _select_database(self, column, table, condition=""):
         try:
