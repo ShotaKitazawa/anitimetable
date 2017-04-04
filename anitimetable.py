@@ -23,9 +23,6 @@ class AniTimeTable:
         self.api = tweepy.API(auth)
         self.connection = DB_CONNECTION
 
-#    def __call__(self):
-#        print("CALL")
-
     def show_all(self):
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
         programs = soup.find("td", {"class": "v3dayCell v3cellR "}).find_all("div", {"class": "pid-item v3div"})
@@ -34,7 +31,7 @@ class AniTimeTable:
 
     def insert_db(self, titlelist_id):
         if self.connection == "_":
-            sys.stderr.write('Error: database not initialized')
+            sys.stderr.write('> Error: database not initialized')
         for i in titlelist_id:
             soup = self._return_soup("/list?cat={0}".format(i))
             title_list = soup.find("table", {"class": "TitleList TableColor"})
@@ -121,7 +118,7 @@ class AniTimeTable:
         c.close()
         response = requests.get("https://search.yahoo.co.jp/image/search?p={0}&ei=UTF-8&rkf=1".format(title))
         if response.status_code == 404:
-            sys.stderr.write('Error: URL page notfound.\n')
+            sys.stderr.write('> Error: URL page notfound.\n')
             sys.exit(1)
         html = response.text.encode("utf-8", "ignore")
         soup = BeautifulSoup(html, "lxml")
@@ -224,7 +221,7 @@ class AniTimeTable:
     def _return_soup(self, path):
         response = requests.get(self.URL + path)
         if response.status_code == 404:
-            sys.stderr.write('Error: URL page notfound.\n')
+            sys.stderr.write('> Error: URL page notfound.\n')
             return
         html = response.text.encode('utf-8', 'ignore')
         return BeautifulSoup(html, "lxml")
@@ -234,17 +231,18 @@ class AniTimeTable:
         atime = program["title"]
         weekday = self._check_weekday()
         tweet = title + "\n" + broadcaster + ": " + weekday + " " + atime + "\n" + "\n" + message
+        print("===")
+        print(tweet)
         c = self.connection.cursor()
         c.execute('select anime_id from anime where name="{}"'.format(title))
         try:
             anime_id = c.fetchall()[0][0]
             self.api.update_with_media(filename="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), status=tweet)
-            print("{0} tweet with picture.".format(title))
+            print("> {0} tweet with picture.".format(title))
         except:
-            sys.stderr.write("Error: '{}' is not in element of database (> anime table)\n".format(title))
-            print(tweet)
+            sys.stderr.write("> Error: '{}' is not in element of database (> anime table)\n".format(title))
             self.api.update_status(status=tweet)
-            print("{0} tweet.".format(title))
+            print("> {0} tweet.".format(title))
         finally:
             c.close()
 
@@ -256,7 +254,7 @@ class AniTimeTable:
             c.close()
             return values
         except:
-            sys.stderr.write("Error: Database cant connected\n")
+            sys.stderr.write("> Error: Database cant connected\n")
             return
 
     def _check_weekday(self):
