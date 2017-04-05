@@ -165,7 +165,10 @@ class AniTimeTable:
                         anime_id = c.fetchall()[0][0]
                         # "anime_{}".format(j[1]) テーブルへの insert
                         c.execute('select * from anime_{0} where anime_id={1} and {0}_id={2}'.format(j[1], anime_id, content_id))
-                        if len(c.fetchall()) == 0:
+                        tmp = c.fetchall()
+                        print(tmp)
+                        #if len(c.fetchall()) == 0:
+                        if len(tmp) == 0:
                             c.execute('insert into anime_{0} values ({1}, {2})'.format(j[1], anime_id, content_id))
                         print(schema + ": " + content.text)
 
@@ -245,17 +248,6 @@ class AniTimeTable:
             print("> {0} tweet.".format(title))
         finally:
             c.close()
-
-    def _select_database(self, column, table, condition=""):
-        try:
-            c = self.connection.cursor()
-            c.execute('select {0} from {1} {2}'.format(column, table, condition))
-            values = c.fetchall()
-            c.close()
-            return values
-        except:
-            sys.stderr.write("> Error: Database cant connected\n")
-            return
 
     def _check_weekday(self):
         if self.time.weekday() == 0:
