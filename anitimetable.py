@@ -138,6 +138,7 @@ class AniTimeTable:
                     contents = i.find_all("a", {"class": "keyword nobr"})
                     if len(contents) == 0:
                         contents = i.find_all("a", {"class": "keyword"})
+                    print(contents)
                     c = self.connection.cursor()
                     for content in contents:
                         if j[1] == "op" or j[1] == "ed":
@@ -148,6 +149,7 @@ class AniTimeTable:
                             c.execute('select singer_id from singer where name="{0}"'.format(content.text))
                             singer_id = c.fetchall()[0][0]
                             # op|ed テーブルへの insert
+                            ## TODO: op|ed テーブルは op_id と singer_id が主キーなのに、ある op_id が一つ存在したらそれ以上インサートしないようになっている > 歌一つに歌手一人しか入っていないなう > _check_table メソッドじゃなくて他のアプローチ？
                             if self._check_table(j[2], j[1]):
                                 c.execute('insert into {0}(name, singer_id) values ("{1}", {2})'.format(j[1], j[2], singer_id))
                             # op|ed テーブルから op|ed_id の抽出
@@ -165,10 +167,7 @@ class AniTimeTable:
                         anime_id = c.fetchall()[0][0]
                         # "anime_{}".format(j[1]) テーブルへの insert
                         c.execute('select * from anime_{0} where anime_id={1} and {0}_id={2}'.format(j[1], anime_id, content_id))
-                        tmp = c.fetchall()
-                        print(tmp)
-                        #if len(c.fetchall()) == 0:
-                        if len(tmp) == 0:
+                        if len(c.fetchall()) == 0:
                             c.execute('insert into anime_{0} values ({1}, {2})'.format(j[1], anime_id, content_id))
                         print(schema + ": " + content.text)
 

@@ -32,7 +32,7 @@ create table anime_op(
 );
 create table op(
 	op_id int AUTO_INCREMENT, name varchar(64), singer_id int,
-	PRIMARY KEY(op_id)
+	PRIMARY KEY(op_id, singer_id)
 );
 create table anime_ed(
 	anime_id int, ed_id int,
@@ -40,7 +40,7 @@ create table anime_ed(
 );
 create table ed(
 	ed_id int AUTO_INCREMENT, name varchar(64), singer_id int,
-	PRIMARY KEY(ed_id)
+	PRIMARY KEY(ed_id, singer_id)
 );
 create table singer(
 	singer_id int AUTO_INCREMENT, name varchar(512), 
