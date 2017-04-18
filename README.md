@@ -142,3 +142,6 @@ if __name__ == "__main__":
 		- 歌手が2人以上のときも singer_id に一人しか入ってない
 		- op テーブルの主キーを op_id & singer_id にすればよさげ
 	- anime_broadcaster テーブル出来てない
+
+- Mastodon に対応
+	- 写真付きトゥートができない
