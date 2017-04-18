@@ -12,6 +12,7 @@
 	- beautifulsoup4 (4.5.3)
 	- requests (2.13.0)
 	- tweepy (3.5.0)
+	- Mastodon.py (1.0.6)
 
 # MEMO
 
@@ -34,6 +35,7 @@ pip install git+https://github.com/ShotaKitazawa/anitimetable
 import anitimetable
 import datetime
 import MySQLdb
+from mastodon import *
 
 
 def main():
@@ -47,17 +49,24 @@ def main():
         "TOKYO MX",
         "AT-X",
     ]
-    C = "hogehoge"
-    CO = "hogehoge"
-    A = "hoge-hoge"
-    AC = "hoge"
+    auth_list = {
+        "CONSUMER_KEY":"8K6BcNqg1OHPh2t2CZLOlxuDb",
+        "CONSUMER_SECRET":"S4W13zYtG6GjH7xzaSQlVbUgx4h0sNVAkWPBUIZBdnsICQ7h02",
+        "ACCESS_TOKEN":"830059724624125952-faRkknQmBtleYPfV8XjeOS3aiLLFmI8",
+        "ACCESS_TOKEN_SECRET":"COv4C7HiUda1JltjvYus4ePhDXzKrpWKhQ8o6XYVrZK4k",
+    }
+    mastodon = Mastodon(
+        client_id="yourapp_clientcred.txt",
+        access_token="your_usercred.txt",
+        api_base_url="https://mstdn.jp",
+    )
     CONNECTION = MySQLdb.connect(
-        user="hoge",
-        passwd="hoge",
+        user="root",
+        passwd="F4p3DEbQ",
         host="localhost",
         db="anime",
     )
-    titlelist_id = {
+    titlelist_id = [
         "1",  # 放送中アニメ
         # "2", # ラジオ
         # "3", # ドラマ
@@ -65,27 +74,29 @@ def main():
         # "5", # アニメ関連
         # "7", # OVA
         # "8", # 映画
-        # "10", # 放送終了アニメ
-    }
+         "10", # 放送終了アニメ
+    ]
+		# 初期化
     now = datetime.datetime.now()
-
-	# 初期化
-    Today_timetable = anitimetable.AniTimeTable(now, broadcaster_list, C, CO, A, AC, DB_CONNECTION=CONNECTION)
+    Today_timetable = anitimetable.AniTimeTable(now, broadcaster_list, DB_CONNECTION=CONNECTION)
 
 	# 今日放送するアニメを全て表示する。
-    Today_timetable.show_all()
+    #Today_timetable.show_all()
 
 	# 現在放送中のアニメを表示する
 	## tweet 引数を取ることでツイートすることが出来る。
-    Today_timetable.now_program(tweet="tweet")
+	## toot 引数を取ることでトゥートすることが出来る。
+    #Today_timetable.now_program()
+    #Today_timetable.now_program(mode="tweet", auth_data=auth_list)
+    #Today_timetable.now_program(mode="toot", auth_data=mastodon)
 
 	# titlelist_id に対応したデータを取ってくる
 	## DB への insert と 画像ファイルのダウンロードを行う
-    Today_timetable.insert_db(titlelist_id)
+    #Today_timetable.insert_db(titlelist_id)
 
 	# 5 分おきにツイート(常駐)
 	## 引数: [0,0] > 現在放送中のアニメ, [0,29] > 0 時間 29 分後放送のアニメ
-    Today_timetable.auto_tweet([0,0],[0,29])
+    #Today_timetable.auto_tweet([0,0],[0,29])
 
 
 if __name__ == "__main__":
@@ -131,4 +142,3 @@ if __name__ == "__main__":
 		- 歌手が2人以上のときも singer_id に一人しか入ってない
 		- op テーブルの主キーを op_id & singer_id にすればよさげ
 	- anime_broadcaster テーブル出来てない
-

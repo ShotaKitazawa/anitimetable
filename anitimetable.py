@@ -6,21 +6,19 @@ import threading
 from bs4 import BeautifulSoup
 import requests
 import tweepy
+from mastodon import *
 
 
 class AniTimeTable:
 
     URL = "http://cal.syoboi.jp"
 
-    def __init__(self, time, broadcaster_list, CONSUMER_KEY="_", CONSUMER_SECRET="_", ACCESS_TOKEN="_", ACCESS_TOKEN_SECRET="_", DB_CONNECTION="_"):
+    def __init__(self, time, broadcaster_list,  DB_CONNECTION="_"):
         if not isinstance(time, datetime.datetime):
             sys.stderr.write('Error: class initialized error: argment type is not datetime.datetime\n')
             return
         self.time = time
         self.broadcaster = broadcaster_list
-        auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-        auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-        self.api = tweepy.API(auth)
         self.connection = DB_CONNECTION
 
     def show_all(self):
@@ -68,7 +66,15 @@ class AniTimeTable:
                 finally:
                     self._search_and_download_image(title)
 
-    def now_program(self, time_ago=[0, 0], tweet="_"):
+    def now_program(self, time_ago=[0, 0], mode="_", auth_data="_"):
+        if mode.lower() == "tweet":
+            auth = tweepy.OAuthHandler(auth_data["CONSUMER_KEY"], auth_data["CONSUMER_SECRET"])
+            auth.set_access_token(auth_data["ACCESS_TOKEN"], auth_data["ACCESS_TOKEN_SECRET"])
+            api = tweepy.API(auth)
+        elif mode.lower() == "toot":
+            mastodon = auth_data
+
+            
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
         programs = soup.find("td", {"class": "v3dayCell v3cellR "}).find_all("div", {"class": "pid-item v3div"})
         for program in programs:
@@ -78,7 +84,7 @@ class AniTimeTable:
                     atime = program["title"]
                     if time_ago[0] == 0 and time_ago[1] == 0:
                         broad_minute = ((self.time - self._broad_time(program, time_ago)[0])).total_seconds() // 60 - 1
-                        message = "{}分前から放送中です。".format(int(broad_minute))
+                        message = "{}分前から放送中です。".format(int(broad_minute+1))
                     elif time_ago[0] == 0:
                         broad_minute = ((self._broad_time(program, time_ago)[0]) - self.time).total_seconds() // 60
                         message = "放送{}分前です。".format(int(broad_minute))
@@ -88,15 +94,18 @@ class AniTimeTable:
                         broad_minute = broad_time - broad_hour * 60
                         message = "放送{}時間{}分前です。".format(int(broad_hour), int(broad_minute))
                     ordinal = self._check_ordinal(program)
-                    if tweet.lower() == "tweet":
-                        self._tweet_with_picture(program, broadcaster_check, message)
+                    if mode.lower() == "tweet":
+                        self._tweet_with_picture(program, broadcaster_check, message, api)
+                    elif mode.lower() == "toot":
+                        self._toot_with_picture(program, broadcaster_check, message, mastodon)
                     else:
                         title = program.find("a", {"class": "v3title"}).text
                         weekday = self._check_weekday()
                         print(title + "\n" + broadcaster_check + ": " + weekday + " " + atime + "\n" + ordinal + message)
                         print("===")
 
-    def auto_tweet(self, *times_ago):
+    def auto_tweet(self, auth_data, *times_ago):
+        self.auth_data = auth_data
         while(True):
             if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % 5 == 0:
                 break
@@ -104,9 +113,26 @@ class AniTimeTable:
         t.start()
 
     def _tweet_per_minute(self, *times_ago):
+        self.auto_data = auth_data
         self.time = datetime.datetime.now()
         for i in times_ago:
-            self.now_program(time_ago=i, tweet="tweet")
+            self.now_program(time_ago=i, mode="tweet", auth_data=self.auth_data)
+        # 5 分毎にツイートする
+        t = threading.Timer(300, self._tweet_per_minute, times_ago)
+        t.start()
+
+    def auto_toot(self,auth_data, *times_ago):
+        self.auth_data = auth_data
+        while(True):
+            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % 5 == 0:
+                break
+        t = threading.Thread(None, self._toot_per_minute, None, times_ago)
+        t.start()
+
+    def _toot_per_minute(self, *times_ago):
+        self.time = datetime.datetime.now()
+        for i in times_ago:
+            self.now_program(time_ago=i, mode="toot", auth_data=self.auth_data)
         # 5 分毎にツイートする
         t = threading.Timer(300, self._tweet_per_minute, times_ago)
         t.start()
@@ -228,7 +254,27 @@ class AniTimeTable:
         html = response.text.encode('utf-8', 'ignore')
         return BeautifulSoup(html, "lxml")
 
-    def _tweet_with_picture(self, program, broadcaster, message):
+    def _toot_with_picture(self, program, broadcaster, message, mastodon):
+        title = program.find("a", {"class": "v3title"}).text
+        atime = program["title"]
+        weekday = self._check_weekday()
+        toot = title + "\n" + broadcaster + ": " + weekday + " " + atime + "\n" + "\n" + message
+        print("===")
+        print(toot)
+        c = self.connection.cursor()
+        c.execute('select anime_id from anime where name="{}"'.format(title))
+        try:
+            anime_id = c.fetchall()[0][0]
+            mastodon.status_post(status=toot, media_ids="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
+            print("> {0} toot with picture.".format(title))
+        except:
+            sys.stderr.write("> Error: '{}' is not in element of database (> anime table)\n".format(title))
+            mastodon.toot(toot)
+            print("> {0} toot.".format(title))
+        finally:
+            c.close()
+
+    def _tweet_with_picture(self, program, broadcaster, message, api):
         title = program.find("a", {"class": "v3title"}).text
         atime = program["title"]
         weekday = self._check_weekday()
@@ -239,11 +285,11 @@ class AniTimeTable:
         c.execute('select anime_id from anime where name="{}"'.format(title))
         try:
             anime_id = c.fetchall()[0][0]
-            self.api.update_with_media(filename="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), status=tweet)
+            api.update_with_media(filename="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), status=tweet)
             print("> {0} tweet with picture.".format(title))
         except:
             sys.stderr.write("> Error: '{}' is not in element of database (> anime table)\n".format(title))
-            self.api.update_status(status=tweet)
+            api.update_status(status=tweet)
             print("> {0} tweet.".format(title))
         finally:
             c.close()
