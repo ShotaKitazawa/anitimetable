@@ -12,6 +12,7 @@ from mastodon import *
 class AniTimeTable:
 
     URL = "http://cal.syoboi.jp"
+    AUTO_TWEET_TIME = 60
 
     def __init__(self, time, broadcaster_list,  DB_CONNECTION="_"):
         if not isinstance(time, datetime.datetime):
@@ -20,6 +21,8 @@ class AniTimeTable:
         self.time = time
         self.broadcaster = broadcaster_list
         self.connection = DB_CONNECTION
+        self.auth_twitter = {"CONSUMER_KEY": "_","CONSUMER_SECRET": "_","ACCESS_TOKEN": "_","ACCESS_TOKEN_SECRET": "_",}
+        self.auth_mastodon = "_"
 
     def show_all(self):
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
@@ -66,13 +69,13 @@ class AniTimeTable:
                 finally:
                     self._search_and_download_image(title)
 
-    def now_program(self, time_ago=[0, 0], mode="_", auth_data="_"):
+    def now_program(self, time_ago=[0, 0], mode="_", auth_twitter="_", auth_mastodon="_"):
         if mode.lower() == "tweet":
-            auth = tweepy.OAuthHandler(auth_data["CONSUMER_KEY"], auth_data["CONSUMER_SECRET"])
-            auth.set_access_token(auth_data["ACCESS_TOKEN"], auth_data["ACCESS_TOKEN_SECRET"])
+            auth = tweepy.OAuthHandler(auth_twitter["CONSUMER_KEY"], auth_twitter["CONSUMER_SECRET"])
+            auth.set_access_token(auth_twitter["ACCESS_TOKEN"], auth_twitter["ACCESS_TOKEN_SECRET"])
             api = tweepy.API(auth)
         elif mode.lower() == "toot":
-            mastodon = auth_data
+            mastodon = auth_mastodon
 
             
         soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
@@ -105,26 +108,25 @@ class AniTimeTable:
                         print("===")
 
     def auto_tweet(self, auth_data, *times_ago):
-        self.auth_data = auth_data
+        self.auth_twitter = auth_data
         while(True):
-            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % 5 == 0:
+            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % (self.AUTO_TWEET_TIME/60) == 0:
                 break
         t = threading.Thread(None, self._tweet_per_minute, None, times_ago)
         t.start()
 
     def _tweet_per_minute(self, *times_ago):
-        self.auto_data = auth_data
         self.time = datetime.datetime.now()
         for i in times_ago:
-            self.now_program(time_ago=i, mode="tweet", auth_data=self.auth_data)
+            self.now_program(time_ago=i, mode="tweet", auth_twitter=self.auth_twitter)
         # 5 分毎にツイートする
-        t = threading.Timer(300, self._tweet_per_minute, times_ago)
+        t = threading.Timer(self.AUTO_TWEET_TIME, self._tweet_per_minute, times_ago)
         t.start()
 
     def auto_toot(self,auth_data, *times_ago):
-        self.auth_data = auth_data
+        self.auth_mastodon = auth_data
         while(True):
-            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % 5 == 0:
+            if datetime.datetime.now().second == 0 and datetime.datetime.now().minute % (self.AUTO_TWEET_TIME/60) == 0:
                 break
         t = threading.Thread(None, self._toot_per_minute, None, times_ago)
         t.start()
@@ -132,9 +134,9 @@ class AniTimeTable:
     def _toot_per_minute(self, *times_ago):
         self.time = datetime.datetime.now()
         for i in times_ago:
-            self.now_program(time_ago=i, mode="toot", auth_data=self.auth_data)
+            self.now_program(time_ago=i, mode="toot", auth_mastodon=self.auth_mastodon)
         # 5 分毎にツイートする
-        t = threading.Timer(300, self._tweet_per_minute, times_ago)
+        t = threading.Timer(self.AUTO_TWEET_TIME, self._toot_per_minute, times_ago)
         t.start()
 
     def _search_and_download_image(self, title):
