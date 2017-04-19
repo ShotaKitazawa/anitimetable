@@ -265,7 +265,11 @@ class AniTimeTable:
         c.execute('select anime_id from anime where name="{}"'.format(title))
         try:
             anime_id = c.fetchall()[0][0]
-            mastodon.status_post(status=toot, media_ids="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
+            print("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
+            #mastodon.status_post(status=toot, media_ids="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
+            #mastodon.media_post("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), mime_type="image/jpeg")
+            media_files = [mastodon.media_post(media, "image/jpeg") for media in ["{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id)]]
+            mastodon.status_post(status=toot, media_ids=media_files)
             print("> {0} toot with picture.".format(title))
         except:
             sys.stderr.write("> Error: '{}' is not in element of database (> anime table)\n".format(title))

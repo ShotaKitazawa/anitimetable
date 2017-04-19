@@ -23,6 +23,11 @@
 mysql -uroot -p anime < anime_db.sql
 ```
 
+- Mastodon.py の内容の修正
+	- 579 行目
+		- 旧: return self.__api_request('POST', '/api/v1/media', files = {'file': media_file_description}) 
+		- 新: return self.__api_request("POST", "/api/v1/media", files = {"file" : (file_name, open(media_file, "rb"))})
+
 - pip でインストールする
 
 ```
