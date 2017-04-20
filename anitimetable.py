@@ -77,9 +77,6 @@ class AniTimeTable:
         elif mode.lower() == "toot":
             mastodon = auth_mastodon
 
-        # TODO: もし %H <=6 ならば %d -= 1
-        # TODO: 0 ~ 6 時を 24 ~ 30 時に変換する
-        ## DATETIME 型使わないほうがええんちゃう
         if self.time.hour <= 6:
             tmp_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, self.time.hour, self.time.minute)
             soup = self._return_soup("/?date=" + tmp_time.strftime("%Y/%m/%d"))
@@ -173,7 +170,6 @@ class AniTimeTable:
                     contents = i.find_all("a", {"class": "keyword nobr"})
                     if len(contents) == 0:
                         contents = i.find_all("a", {"class": "keyword"})
-                    print(contents)
                     c = self.connection.cursor()
                     for content in contents:
                         if j[1] == "op" or j[1] == "ed":
@@ -184,8 +180,10 @@ class AniTimeTable:
                             c.execute('select singer_id from singer where name="{0}"'.format(content.text))
                             singer_id = c.fetchall()[0][0]
                             # op|ed テーブルへの insert
-                            ## TODO: op|ed テーブルは op_id と singer_id が主キーなのに、ある op_id が一つ存在したらそれ以上インサートしないようになっている > 歌一つに歌手一人しか入っていないなう > _check_table メソッドじゃなくて他のアプローチ？
-                            if self._check_table(j[2], j[1]):
+                            ## TODO: op|ed テーブルは op_id と singer_id が主キーなのに、ある name が一つ存在したらそれ以上インサートしないようになっている > 歌一つに歌手一人しか入っていないなう > _check_table メソッドじゃなくて他のアプローチ？
+                            c.execute('select * from {0} where name="{1}" and singer_id={2}'.format(j[1], j[2], singer_id))
+                            tmp = c.fetchall()
+                            if len(tmp) == 0:
                                 c.execute('insert into {0}(name, singer_id) values ("{1}", {2})'.format(j[1], j[2], singer_id))
                             # op|ed テーブルから op|ed_id の抽出
                             c.execute('select {0}_id from {0} where name="{1}"'.format(j[1], j[2]))
@@ -236,8 +234,10 @@ class AniTimeTable:
             else:
                 end_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, end_hour, end_minute, 0)
         else:
-            start_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, start_hour, start_minute, 0)
-            end_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, end_hour, end_minute, 0)
+            #start_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, start_hour, start_minute, 0)
+            #end_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, end_hour, end_minute, 0)
+            start_time = datetime.datetime(self.time.year, self.time.month, self.time.day , start_hour, start_minute, 0)
+            end_time = datetime.datetime(self.time.year, self.time.month, self.time.day , end_hour, end_minute, 0)
         return start_time, end_time
 
     def _time_check(self, program, time_ago):  # time_age = [時,分]
