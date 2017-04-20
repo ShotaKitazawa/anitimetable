@@ -77,8 +77,15 @@ class AniTimeTable:
         elif mode.lower() == "toot":
             mastodon = auth_mastodon
 
-            
-        soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
+        # TODO: もし %H <=6 ならば %d -= 1
+        # TODO: 0 ~ 6 時を 24 ~ 30 時に変換する
+        ## DATETIME 型使わないほうがええんちゃう
+        if self.time.hour <= 6:
+            tmp_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, self.time.hour, self.time.minute)
+            soup = self._return_soup("/?date=" + tmp_time.strftime("%Y/%m/%d"))
+        else:
+            soup = self._return_soup("/?date=" + self.time.strftime("%Y/%m/%d"))
+
         programs = soup.find("td", {"class": "v3dayCell v3cellR "}).find_all("div", {"class": "pid-item v3div"})
         for program in programs:
             if self._time_check(program, time_ago):
@@ -227,10 +234,10 @@ class AniTimeTable:
             if end_hour >= 6:
                 end_time = datetime.datetime(self.time.year, self.time.month, self.time.day, end_hour, end_minute, 0)
             else:
-                end_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, end_hour, end_minute, 0)
+                end_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, end_hour, end_minute, 0)
         else:
-            start_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, start_hour, start_minute, 0)
-            end_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, end_hour, end_minute, 0)
+            start_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, start_hour, start_minute, 0)
+            end_time = datetime.datetime(self.time.year, self.time.month, self.time.day + 1, end_hour, end_minute, 0)
         return start_time, end_time
 
     def _time_check(self, program, time_ago):  # time_age = [時,分]
@@ -268,8 +275,6 @@ class AniTimeTable:
         try:
             anime_id = c.fetchall()[0][0]
             print("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
-            #mastodon.status_post(status=toot, media_ids="{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id))
-            #mastodon.media_post("{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id), mime_type="image/jpeg")
             media_files = [mastodon.media_post(media, "image/jpeg") for media in ["{0}/.images/{1}.jpg".format(os.path.expanduser('~'), anime_id)]]
             mastodon.status_post(status=toot, media_ids=media_files)
             print("> {0} toot with picture.".format(title))
