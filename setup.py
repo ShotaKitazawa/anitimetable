@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
         name            = "anitimetable",
-	version         = "0.1",
+	version         = "0.2",
 	description     = 'Scraping "from http://cal.syoboi.jp/" and more',
         author          = "Shota Kitazawa",
         author_email    = "skitazawa1121@gmail.com",
