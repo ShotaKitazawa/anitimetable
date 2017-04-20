@@ -77,9 +77,6 @@ class AniTimeTable:
         elif mode.lower() == "toot":
             mastodon = auth_mastodon
 
-        # TODO: もし %H <=6 ならば %d -= 1
-        # TODO: 0 ~ 6 時を 24 ~ 30 時に変換する
-        ## DATETIME 型使わないほうがええんちゃう
         if self.time.hour <= 6:
             tmp_time = datetime.datetime(self.time.year, self.time.month, self.time.day - 1, self.time.hour, self.time.minute)
             soup = self._return_soup("/?date=" + tmp_time.strftime("%Y/%m/%d"))
@@ -97,7 +94,10 @@ class AniTimeTable:
                         message = "{}分前から放送中です。".format(int(broad_minute+1))
                     elif time_ago[0] == 0:
                         broad_minute = ((self._broad_time(program, time_ago)[0]) - self.time).total_seconds() // 60
-                        message = "放送{}分前です。".format(int(broad_minute))
+                        if int(broad_minute+1) == 0:
+                            message = "放送が始まりました。"
+                        else:
+                            message = "放送{}分前です。".format(int(broad_minute+1))
                     else:
                         broad_time = ((self._broad_time(program, time_ago)[0]) - self.time).total_seconds() // 60
                         broad_hour = broad_time // 60
